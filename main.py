@@ -44,6 +44,8 @@ def regression_minibatch(dataset, labels, weights, n_features, learning_rate, pr
 
     for i in range(0, int(n_sample/minibatch_dimension)):
         minibatch_dataset = random.sample(tmp_dataset, minibatch_dimension)
+        # for t in range(0, len(minibatch_dataset)):
+        #     tmp_dataset.remove(minibatch_dataset[t])
         for j in range(0, len(weights)):
             correction = 0
             for k in range(0, len(minibatch_dataset)):
@@ -116,19 +118,46 @@ def main():
     dataset = iris.data[:, :n_features]
     labels = iris.target
     learning_rate = 0.001
-    minibatch_dimension = 12
+    minibatch_dimension = 6
     precision = 3
+    n_sample_per_label = 40
 
-    training_dataset = numpy.concatenate((numpy.concatenate((dataset[0:40], dataset[50:90]), axis=0),
-                                          dataset[100:140]), axis=0)
-    training_dataset_labels = numpy.concatenate((numpy.concatenate((labels[0:40], labels[50:90]), axis=0),
-                                                 labels[100:140]), axis=0)
-    test_dataset = numpy.concatenate((numpy.concatenate((dataset[40:50], dataset[90:100]), axis=0),
-                                      dataset[140:150]), axis=0)
-    test_dataset_labels = numpy.concatenate((numpy.concatenate((labels[40:50], labels[90:100]), axis=0),
-                                             labels[140:150]), axis=0)
-    n_test = len(test_dataset)
+    n_sample = len(dataset)
+    tmp_dataset = []
+    for i in range(0, n_sample):
+        tmp_sample = []
+        for j in range(0, n_features):
+            tmp_sample.insert(j, dataset[i][j])
+        tmp_sample.insert(n_features, labels[i])
+        tmp_dataset.insert(i, tmp_sample)
+
+    training_dataset = numpy.concatenate((numpy.concatenate(
+        (random.sample(tmp_dataset[:50], n_sample_per_label),
+         random.sample(tmp_dataset[50:100], n_sample_per_label)), axis=0),
+                                          random.sample(tmp_dataset[100:150], n_sample_per_label)), axis=0)
     n_training = len(training_dataset)
+    training_dataset_labels = []
+    for i in range(0, n_training):
+        training_dataset_labels.insert(i, training_dataset[i][n_features])
+
+    test_dataset = tmp_dataset.copy()
+    for i in range(0, n_training):
+        test_dataset.remove(tmp_dataset[i])
+    n_test = len(test_dataset)
+    test_dataset_labels = []
+    for i in range(0, n_test):
+        test_dataset_labels.insert(i, test_dataset[i][n_features])
+
+    # training_dataset = numpy.concatenate((numpy.concatenate((dataset[0:40], dataset[50:90]), axis=0),
+    #                                       dataset[100:140]), axis=0)
+    # training_dataset_labels = numpy.concatenate((numpy.concatenate((labels[0:40], labels[50:90]), axis=0),
+    #                                              labels[100:140]), axis=0)
+    # test_dataset = numpy.concatenate((numpy.concatenate((dataset[40:50], dataset[90:100]), axis=0),
+    #                                   dataset[140:150]), axis=0)
+    # test_dataset_labels = numpy.concatenate((numpy.concatenate((labels[40:50], labels[90:100]), axis=0),
+    #                                          labels[140:150]), axis=0)
+    # n_test = len(test_dataset)
+    # n_training = len(training_dataset)
 
     linear_weights = numpy.zeros(n_features + 1)
     min_mse = mean_square_error(training_dataset, training_dataset_labels, linear_weights, n_features, precision)
@@ -245,7 +274,7 @@ def main():
         pos_mean /= n_pos
         neg_mean /= n_neg
         # threshold = (pos_mean - neg_mean)
-        threshold = neg_max
+        threshold = (neg_max + pos_min)/2
         print("positive's mean: " + str(round(pos_mean, precision)) + ", negative's mean: " +
               str(round(neg_mean, precision)) + ", positive's max: " + str(round(pos_max, precision))
               + ", negative's max: " + str(round(neg_max, precision)) + ", positive's min: " +
