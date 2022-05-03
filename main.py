@@ -160,9 +160,9 @@ def main():
     accuracy = round(accuracy, precision)
 
     print("linear regression || y=(" + str(round(linear_weights[0], precision)) + ")+(" +
-          str(round(linear_weights[1], precision)) + ")x1+(" + str(round(linear_weights[precision], precision))+")x2" +
+          str(round(linear_weights[1], precision)) + ")x1+(" + str(round(linear_weights[2], precision))+")x2" +
           "+(" + str(round(linear_weights[3], precision)) + ")x3+(" + str(round(linear_weights[4], precision))+")x4" +
-          " mse: " + str(round(mse, precision)) + ", accuracy on test set: " + str(round(accuracy, precision)) + "%")
+          " mse: " + str(round(mse, precision)) + ", accuracy on test set: " + str(round(accuracy, precision)) + "%\n")
 
     training_dataset_labels1 = numpy.copy(training_dataset_labels)
     test_dataset_labels1 = numpy.copy(test_dataset_labels)
@@ -221,6 +221,8 @@ def main():
         bce = min_bce
 
         pos_mean, neg_mean, n_pos, n_neg = 0, 0, 0, 0
+        pos_max, neg_max = 0, 0
+        pos_min, neg_min = 1, 1
         for i in range(0, n_training):
             sample = training_dataset[i]
             expected = training_dataset_labels_i[j][i]
@@ -229,14 +231,26 @@ def main():
             if expected == 1:
                 pos_mean += predicted
                 n_pos += 1
+                if predicted > pos_max:
+                    pos_max = predicted
+                if predicted < pos_min:
+                    pos_min = predicted
             else:
                 neg_mean += predicted
                 n_neg += 1
+                if predicted > neg_max:
+                    neg_max = predicted
+                if predicted < neg_min:
+                    neg_min = predicted
         pos_mean /= n_pos
         neg_mean /= n_neg
-        threshold = pos_mean - neg_mean
+        # threshold = (pos_mean - neg_mean)
+        threshold = neg_max
         print("positive's mean: " + str(round(pos_mean, precision)) + ", negative's mean: " +
-              str(round(neg_mean, precision)) + ", threshold: " + str(round(threshold, precision)))
+              str(round(neg_mean, precision)) + ", positive's max: " + str(round(pos_max, precision))
+              + ", negative's max: " + str(round(neg_max, precision)) + ", positive's min: " +
+              str(round(pos_min, precision)) + ", negative's min: " + str(round(neg_min, precision)) +
+              ", epochs: " + str(n_iterations) + ", threshold: " + str(round(threshold, precision)))
 
         accuracy = 0
         for i in range(0, n_test):
@@ -254,10 +268,10 @@ def main():
         accuracy *= 100
         accuracy = round(accuracy, precision)
         print("logistic regression || y=1/(1+e^-((" + str(round(logistic_weights[0], precision)) + ")+(" +
-              str(round(logistic_weights[1], precision)) + ")x1+(" + str(round(logistic_weights[precision], precision))
+              str(round(logistic_weights[1], precision)) + ")x1+(" + str(round(logistic_weights[2], precision))
               + ")x2" + "+(" + str(round(logistic_weights[3], precision)) + ")x3+(" +
               str(round(logistic_weights[4], precision)) + ")x4))" + " bce: " + str(round(bce, precision)) +
-              ", accuracy on test set " + str(j) + ": " + str(round(accuracy, precision)) + "%")
+              ", accuracy on test set " + str(j) + ": " + str(round(accuracy, precision)) + "%\n")
 
 
 main()
