@@ -125,69 +125,91 @@ def main():
     decadence = 1 + learning_rate
     n_max_epoch = 1000
     normalized_dataset = dataset.copy()
+    n_sample = len(dataset)
+    random_set = True
+    early_termination = False
 
     # computation of min and max values for each feature
     mins_maxs = []
     for i in range(0, n_features):
         mins_maxs.insert(i, (dataset[:, i].min(), dataset[:, i].max()))
+    means = []
+    std_devs = []
+    for i in range(0, n_features):
+        mean = 0
+        std_dev = 0
+        for sample in dataset:
+            mean += sample[i]
+        mean /= n_sample
+        means.insert(i, mean)
+        for sample in dataset:
+            std_dev += math.pow(sample[i] - mean, 2)
+        std_dev /= n_sample
+        std_devs.insert(i, std_dev)
 
     # dataset normalization
-    n_sample = len(dataset)
     for i in range(0, n_sample):
         for j in range(0, n_features):
-            normalized_dataset[i][j] -= mins_maxs[j][0]
-            normalized_dataset[i][j] /= (mins_maxs[j][1] - mins_maxs[j][0])
+            # # min-max normalization
+            # normalized_dataset[i][j] -= mins_maxs[j][0]
+            # normalized_dataset[i][j] /= (mins_maxs[j][1] - mins_maxs[j][0])
 
-    # data structure manipulation to allow a correct random sampling
-    # tmp_dataset = []
-    # for i in range(0, n_sample):
-    #     tmp_sample = []
-    #     for j in range(0, n_features):
-    #         tmp_sample.insert(j, normalized_dataset[i][j])
-    #     tmp_sample.insert(n_features, labels[i])
-    #     tmp_dataset.insert(i, tmp_sample)
+            # z-mean normalization
+            normalized_dataset[i][j] -= means[j]
+            normalized_dataset[i][j] /= std_devs[j]
 
-    # # random sampling from whole dataset to define training and test sets
-    # training_dataset = numpy.concatenate((numpy.concatenate(
-    #     (random.sample(tmp_dataset[:50], n_sample_per_label),
-    #      random.sample(tmp_dataset[50:100], n_sample_per_label)), axis=0),
-    #                                       random.sample(tmp_dataset[100:150], n_sample_per_label)), axis=0)
-    # n_training = len(training_dataset)
-    # training_dataset_labels = []
-    # for i in range(0, n_training):
-    #     training_dataset_labels.insert(i, training_dataset[i][n_features])
-    #
-    # test_dataset = tmp_dataset.copy()
-    # for i in range(0, n_training):
-    #     for j in range(0, len(test_dataset)):
-    #         training_sample = training_dataset[i]
-    #         test_sample = test_dataset[j]
-    #         equals = True
-    #         # deep-equal
-    #         for k in range(0, n_features):
-    #             if training_sample[k] != test_sample[k]:
-    #                 equals = False
-    #                 break
-    #         if equals is True:
-    #             test_dataset.pop(j)
-    #             break
-    #
-    # n_test = len(test_dataset)
-    # test_dataset_labels = []
-    # for i in range(0, n_test):
-    #     test_dataset_labels.insert(i, test_dataset[i][n_features])
+    # training and test samples extraction from dataset (random/non-random)
+    if random_set is True:
+        # data structure manipulation to allow a correct random sampling
+        tmp_dataset = []
+        for i in range(0, n_sample):
+            tmp_sample = []
+            for j in range(0, n_features):
+                tmp_sample.insert(j, normalized_dataset[i][j])
+            tmp_sample.insert(n_features, labels[i])
+            tmp_dataset.insert(i, tmp_sample)
 
-    # training and test sets definition for linear regression
-    training_dataset = numpy.concatenate((numpy.concatenate((normalized_dataset[0:40], normalized_dataset[50:90]),
-                                                            axis=0), normalized_dataset[100:140]), axis=0)
-    training_dataset_labels = numpy.concatenate((numpy.concatenate((labels[0:40], labels[50:90]),
-                                                                   axis=0), labels[100:140]), axis=0)
-    test_dataset = numpy.concatenate((numpy.concatenate((normalized_dataset[40:50], normalized_dataset[90:100]),
-                                                        axis=0), normalized_dataset[140:150]), axis=0)
-    test_dataset_labels = numpy.concatenate((numpy.concatenate((labels[40:50], labels[90:100]),
-                                                               axis=0), labels[140:150]), axis=0)
-    n_test = len(test_dataset)
-    n_training = len(training_dataset)
+        # random training and test sets definition
+        training_dataset = numpy.concatenate((numpy.concatenate(
+            (random.sample(tmp_dataset[:50], n_sample_per_label),
+             random.sample(tmp_dataset[50:100], n_sample_per_label)), axis=0),
+                                              random.sample(tmp_dataset[100:150], n_sample_per_label)), axis=0)
+        n_training = len(training_dataset)
+        training_dataset_labels = []
+        for i in range(0, n_training):
+            training_dataset_labels.insert(i, training_dataset[i][n_features])
+
+        test_dataset = tmp_dataset.copy()
+        for i in range(0, n_training):
+            for j in range(0, len(test_dataset)):
+                training_sample = training_dataset[i]
+                test_sample = test_dataset[j]
+                equals = True
+                # deep-equal
+                for k in range(0, n_features):
+                    if training_sample[k] != test_sample[k]:
+                        equals = False
+                        break
+                if equals is True:
+                    test_dataset.pop(j)
+                    break
+
+        n_test = len(test_dataset)
+        test_dataset_labels = []
+        for i in range(0, n_test):
+            test_dataset_labels.insert(i, test_dataset[i][n_features])
+    else:
+        # non-random training and test sets definition
+        training_dataset = numpy.concatenate((numpy.concatenate((normalized_dataset[0:40], normalized_dataset[50:90]),
+                                                                axis=0), normalized_dataset[100:140]), axis=0)
+        n_training = len(training_dataset)
+        training_dataset_labels = numpy.concatenate((numpy.concatenate((labels[0:40], labels[50:90]),
+                                                                       axis=0), labels[100:140]), axis=0)
+        test_dataset = numpy.concatenate((numpy.concatenate((normalized_dataset[40:50], normalized_dataset[90:100]),
+                                                            axis=0), normalized_dataset[140:150]), axis=0)
+        n_test = len(test_dataset)
+        test_dataset_labels = numpy.concatenate((numpy.concatenate((labels[40:50], labels[90:100]),
+                                                                   axis=0), labels[140:150]), axis=0)
 
     # LINEAR REGRESSION
     linear_weights = numpy.zeros(n_features + 1)
@@ -206,9 +228,9 @@ def main():
             min_mse = curr_mse
             min_linear_weights = linear_weights
             n_min_epoch = n_iterations
-        # # early termination
-        # else:
-        #     break
+        # early termination
+        elif early_termination is True:
+            break
 
     # statistics
     min_0, min_1, min_2 = 1, 1, 1
@@ -338,8 +360,8 @@ def main():
                 min_logistic_weights = logistic_weights
                 n_min_epoch = n_iterations
             # early termination
-            # else:
-            #     break
+            elif early_termination is True:
+                break
 
         pos_mean, neg_mean, n_pos, n_neg = 0, 0, 0, 0
         pos_max, neg_max = 0, 0
