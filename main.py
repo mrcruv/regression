@@ -1,33 +1,11 @@
 import math
 import random
-
 import numpy
 from sklearn import datasets
 
 
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
-
-
-def regression(dataset, labels, weights, n_features, learning_rate, predict_function):
-    # loss is mean square error loss for linear regression,
-    # binary cross entropy loss for logistic regression
-    # => same update rule
-    new_weights = weights.copy()
-    for i in range(0, n_features+1):
-        correction = 0
-        for j in range(0, len(dataset)):
-            sample = dataset[j]
-            predicted = predict_function(sample, weights, n_features)
-            expected = labels[j]
-            difference = expected - predicted
-            if i == 0:
-                correction += difference
-            else:
-                correction += difference * sample[i - 1]
-        new_weights[i] += learning_rate * correction
-
-    return new_weights
 
 
 def regression_minibatch(dataset, labels, weights, n_features, learning_rate, predict_function, minibatch_dimension):
