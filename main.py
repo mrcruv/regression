@@ -1,5 +1,7 @@
 import math
 import random
+import sys
+
 import numpy
 from sklearn import datasets
 
@@ -9,6 +11,8 @@ def sigmoid(x):
 
 
 def regression_minibatch(dataset, labels, weights, n_features, learning_rate, predict_function, minibatch_dimension):
+    # O(n_sample*n_features) + O(n_sample*len(weights)*len(minibatch_dataset)/minibatch_dimension)*O(predict_function)
+    # <= O(n_sample*n_features^2*len(minibatch_dataset)/minibatch_dimension) <= O(n_sample*n_features^2)
     new_weights = weights.copy()
     n_sample = len(dataset)
 
@@ -41,6 +45,7 @@ def regression_minibatch(dataset, labels, weights, n_features, learning_rate, pr
 
 
 def predict_logistic(sample, weights, n_features):
+    # O(n_features)
     x = weights[0]
     for i in range(0, n_features):
         x += weights[i + 1] * sample[i]
@@ -49,6 +54,7 @@ def predict_logistic(sample, weights, n_features):
 
 
 def predict_linear(sample, weights, n_features):
+    # O(n_features)
     predicted = weights[0]
     for i in range(0, n_features):
         predicted += weights[i + 1] * sample[i]
@@ -75,13 +81,13 @@ def binary_cross_entropy(dataset, labels, weights, n_features, precision=2):
         sample = dataset[i]
         expected = labels[i]
         predicted = round(predict_logistic(sample, weights, n_features), precision)
-        # to avoid math exception
+        # to avoid math exceptions
         if predicted == 0:
-            a = -math.inf
+            a = -round(float('inf'), precision)
             b = math.log(1 - predicted, math.e)
         elif predicted == 1:
             a = math.log(predicted, math.e)
-            b = -math.inf
+            b = -round(float('inf'), precision)
         else:
             a = math.log(predicted, math.e)
             b = math.log(1 - predicted, math.e)
@@ -104,8 +110,9 @@ def main():
     n_max_epoch = 1000
     normalized_dataset = dataset.copy()
     n_sample = len(dataset)
-    random_set = True
-    early_termination = False
+    random_set = False
+    early_termination = True
+    normalize = True
 
     # computation of min and max values for each feature
     mins_maxs = []
@@ -126,15 +133,12 @@ def main():
         std_devs.insert(i, std_dev)
 
     # dataset normalization
-    for i in range(0, n_sample):
-        for j in range(0, n_features):
-            # # min-max normalization
-            # normalized_dataset[i][j] -= mins_maxs[j][0]
-            # normalized_dataset[i][j] /= (mins_maxs[j][1] - mins_maxs[j][0])
-
-            # z-mean normalization
-            normalized_dataset[i][j] -= means[j]
-            normalized_dataset[i][j] /= std_devs[j]
+    if normalize is True:
+        for i in range(0, n_sample):
+            for j in range(0, n_features):
+                # z-mean normalization
+                normalized_dataset[i][j] -= means[j]
+                normalized_dataset[i][j] /= std_devs[j]
 
     # training and test samples extraction from dataset (random/non-random)
     if random_set is True:
@@ -176,6 +180,10 @@ def main():
         test_dataset_labels = []
         for i in range(0, n_test):
             test_dataset_labels.insert(i, test_dataset[i][n_features])
+            test_dataset[i] = test_dataset[i][:n_features]
+
+        training_dataset = training_dataset[:, :n_features]
+        test_dataset = numpy.array(test_dataset)
     else:
         # non-random training and test sets definition
         training_dataset = numpy.concatenate((numpy.concatenate((normalized_dataset[0:40], normalized_dataset[50:90]),
@@ -192,17 +200,18 @@ def main():
     # LINEAR REGRESSION
     linear_weights = numpy.zeros(n_features + 1)
     min_mse = mean_square_error(training_dataset, training_dataset_labels, linear_weights, n_features, precision)
-    n_iterations = 0
     min_linear_weights = linear_weights
     n_min_epoch = 0
+    n_iterations = 0
     while n_iterations < n_max_epoch:
         n_iterations += 1
         linear_weights = regression_minibatch(training_dataset, training_dataset_labels, linear_weights, n_features,
                                               learning_rate/(math.pow(decadence, n_iterations)),
                                               predict_linear, minibatch_dimension)
-        # print(linear_weights)
         curr_mse = mean_square_error(training_dataset, training_dataset_labels, linear_weights, n_features, precision)
-        if curr_mse <= min_mse:
+        # print("iteration " + str(n_iterations) + ", weights: " + str(linear_weights) + ", mse: " +
+        #       str(round(curr_mse, precision)) + ".")
+        if not numpy.isnan(curr_mse) and curr_mse <= min_mse:
             min_mse = curr_mse
             min_linear_weights = linear_weights
             n_min_epoch = n_iterations
@@ -241,11 +250,8 @@ def main():
                 max_2 = predicted
             if predicted < min_2:
                 min_2 = predicted
-    mean_0 /= n_0
-    mean_1 /= n_1
-    mean_2 /= n_2
-    threshold_1 = (max_0 + min_1)/2
-    threshold_2 = (max_1 + min_2)/2
+    mean_0, mean_1, mean_2 = mean_0/n_0, mean_1/n_1, mean_2/n_2
+    threshold_1, threshold_2 = (max_0 + min_1)/2, (max_1 + min_2)/2
 
     accuracy = 0
     for i in range(0, n_test):
@@ -261,8 +267,7 @@ def main():
             predicted = 2
         if expected == predicted:
             accuracy += 1
-    accuracy /= n_test
-    accuracy *= 100
+    accuracy *= 100/n_test
 
     print("LINEAR REGRESSION | y=(" + str(round(min_linear_weights[0], precision)) + ")+(" +
           str(round(min_linear_weights[1], precision)) + ")x1+(" + str(round(min_linear_weights[2], precision))
@@ -330,10 +335,11 @@ def main():
             logistic_weights = regression_minibatch(training_dataset, training_dataset_labels_i[j], logistic_weights,
                                                     n_features, learning_rate/(math.pow(decadence, n_iterations)),
                                                     predict_logistic, minibatch_dimension)
-            # print(logistic_weights)
             curr_bce = binary_cross_entropy(training_dataset, training_dataset_labels_i[j], logistic_weights,
                                             n_features, precision)
-            if curr_bce <= min_bce:
+            # print("iteration " + str(n_iterations) + ", weights: " + str(logistic_weights) + ", bce: " +
+            #       str(round(curr_bce, precision)) + ".")
+            if not numpy.isnan(curr_bce) and curr_bce <= min_bce:
                 min_bce = curr_bce
                 min_logistic_weights = logistic_weights
                 n_min_epoch = n_iterations
@@ -363,8 +369,7 @@ def main():
                     neg_max = predicted
                 if predicted < neg_min:
                     neg_min = predicted
-        pos_mean /= n_pos
-        neg_mean /= n_neg
+        pos_mean, neg_mean = pos_mean/n_pos, neg_mean/n_neg
         threshold = (neg_max + pos_min)/2
 
         accuracy = 0
@@ -379,8 +384,7 @@ def main():
                 predicted = 0
             if expected == predicted:
                 accuracy += 1
-        accuracy /= n_test
-        accuracy *= 100
+        accuracy *= 100/n_test
 
         print("LOGISTIC REGRESSION | y=1/(1+e^-((" + str(round(min_logistic_weights[0], precision)) + ")+(" +
               str(round(min_logistic_weights[1], precision)) + ")x1+(" + str(round(min_logistic_weights[2], precision))
