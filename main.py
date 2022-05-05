@@ -1,7 +1,5 @@
 import math
 import random
-import sys
-
 import numpy
 from sklearn import datasets
 
@@ -83,11 +81,11 @@ def binary_cross_entropy(dataset, labels, weights, n_features, precision=2):
         predicted = round(predict_logistic(sample, weights, n_features), precision)
         # to avoid math exceptions
         if predicted == 0:
-            a = -round(float('inf'), precision)
+            a = float('-inf')
             b = math.log(1 - predicted, math.e)
         elif predicted == 1:
             a = math.log(predicted, math.e)
-            b = -round(float('inf'), precision)
+            b = float('-inf')
         else:
             a = math.log(predicted, math.e)
             b = math.log(1 - predicted, math.e)
